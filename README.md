@@ -69,25 +69,71 @@ cd note-voyeur
 
 ## Usage
 
-Run the script:
+### Basic Usage
+
+Run the script with default settings (last 5 notes):
 
 ```bash
 python3 note_reader.py
 ```
 
-The script will:
-1. Read the last 5 notes from your Notes app
-2. Display them in two formats:
-   - Simple text output
-   - Structured data with metadata
-3. Save the structured data to a JSON file (automatically ignored by git)
+### Advanced Usage with Parameters
 
-## Configuration
+The script now supports command-line arguments for flexible note extraction:
 
-You can modify the number of notes to read by editing the `limit` variable in the `main()` function:
+```bash
+# Extract specific number of notes
+python3 note_reader.py -n 10
 
-```python
-limit = 5  # Change this number to read more or fewer notes
+# Extract notes from a specific date (YYYY-MM-DD format)
+python3 note_reader.py -d 2025-05-01 -n 20
+
+# Extract notes from 7 days ago
+python3 note_reader.py -d 7 -n 15
+
+# Show statistics only (don't extract notes)
+python3 note_reader.py --stats-only
+
+# Show statistics and extract notes
+python3 note_reader.py -d 3 -n 5 -c
+```
+
+### Command Line Options
+
+- `-n, --limit`: Number of notes to extract (default: 5)
+- `-d, --from-date`: Extract notes from this date onwards
+  - Formats supported:
+    - `YYYY-MM-DD` (e.g., `2025-05-01`)
+    - `DD/MM/YYYY` (e.g., `01/05/2025`)
+    - Days ago as number (e.g., `7` for 7 days ago)
+- `-c, --count`: Show count of total notes and filtered notes
+- `--stats-only`: Show only statistics, don't extract notes
+
+### Examples
+
+```bash
+# Get help
+python3 note_reader.py -h
+
+# Extract last 3 notes
+python3 note_reader.py -n 3
+
+# Extract notes modified in the last 2 weeks
+python3 note_reader.py -d 14 -n 50
+
+# Extract notes from specific date with statistics
+python3 note_reader.py -d 2025-05-15 -n 10 -c
+
+# Check how many notes you have
+python3 note_reader.py --stats-only
+```
+
+### Run Examples
+
+To see various usage examples:
+
+```bash
+python3 examples.py
 ```
 
 ## Output
