@@ -35,3 +35,9 @@ ENV/
 # Temporary files
 *.tmp
 *.temp
+
+# Development and testing files
+examples_*.py
+setup_env.sh
+test_env*.py
+final_integration*.py

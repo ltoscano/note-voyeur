@@ -1,20 +1,30 @@
 # Note Voyeur
 
-A Python application that reads and analyzes notes from the macOS Notes app using AppleScript.
+A Python application that reads and analyzes notes from the macOS Notes app using AppleScript, with AI-powered content analysis capabilities.
 
 ## Features
 
+### Core Features
 - Read the latest notes from macOS Notes app
 - Display notes in structured format with metadata
 - Export notes to JSON format
+- Advanced filtering by date ranges and content tags
+- Mark notes with special tags for tracking
 - Limit number of notes to read (default: 5)
 - Timeout protection to prevent hanging
+
+### AI Analysis Features ✨ NEW!
+- **AI-powered concept extraction** using OpenAI GPT-4
+- **Automatic link detection** and content analysis
+- **Content summarization** from web links using MarkItDown
+- **Structured analysis output** with concepts, links, and explanations
 
 ## Requirements
 
 - macOS (required for Notes app integration)
-- Python 3.6+
+- Python 3.10+ (required for MarkItDown library)
 - Access to macOS Notes app
+- OpenAI API key (for AI analysis features)
 
 ## Security Settings for macOS
 
@@ -66,6 +76,34 @@ cd note-voyeur
 ```
 
 2. No additional dependencies required (uses standard library)
+
+3. Install required dependencies:
+
+```bash
+# For basic note reading functionality
+pip install -r requirements.txt
+
+# For AI analysis (automatically installs MarkItDown)
+pip install openai markitdown[all]
+```
+
+4. Set your OpenAI API key (for AI analysis features):
+
+**Option 1: Environment variable**
+```bash
+export OPENAI_API_KEY='your-openai-api-key-here'
+```
+
+**Option 2: .env file (recommended)**
+Create a `.env` file in the project directory:
+```
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+**Option 3: Command line parameter**
+```bash
+python ai_analyzer.py notes.json --api-key your-openai-api-key-here
+```
 
 ## Usage
 
@@ -227,6 +265,126 @@ The script generates:
   - `notes_export_YYYYMMDD_to_YYYYMMDD_limit_X.json` (range filtering)
   - `notes_export_*_tag_TAGNAME_*.json` (tag filtering - combined with other filters)
   - `notes_export_*_marked_*.json` (marked notes - includes "_marked" suffix)
+
+### AI Analysis Output
+
+The AI analysis script (`ai_analyzer.py`) generates:
+- Console output with analysis results
+- JSON files with AI analysis details appended to original note exports:
+  - `notes_export_*_ai_analyzed.json` (AI analysis results)
+
+## Project Files
+
+### Core Scripts
+- **`note_reader.py`** - Main script for extracting notes from macOS Notes app
+- **`ai_analyzer.py`** ✨ NEW! - AI-powered analysis of extracted notes using OpenAI GPT-4
+- **`examples_ai_analyzer.py`** - Example usage and demonstrations for AI analyzer
+
+### Example Scripts
+- **`examples.py`** - Basic usage examples for note_reader.py
+- **`examples_with_tags.py`** - Examples using tag filtering functionality
+- **`examples_with_marking.py`** - Examples using note marking functionality
+- **`examples_updated.py`** - Updated examples with latest features
+
+### Documentation
+- **`README.md`** - This documentation file
+- **`test_results.md`** - Comprehensive test results and validation
+
+## AI Analysis Features
+
+Il progetto include uno script `ai_analyzer.py` che utilizza **OpenAI GPT-4** e **MarkItDown** per analizzare automaticamente le note estratte e:
+
+1. **Estrarre concetti chiave** da ogni nota usando intelligenza artificiale
+2. **Identificare e analizzare link** presenti nelle note
+3. **Generare spiegazioni** del contenuto dei link utilizzando MarkItDown per l'estrazione e GPT-4 per il riassunto
+
+## Installazione delle Dipendenze
+
+Per utilizzare le funzionalità di AI analysis, è necessario:
+
+### 1. Attivare l'ambiente virtuale
+```bash
+source /Users/lorenzo/Lab/collaterals/.venv/bin/activate
+```
+
+### 2. Installare le dipendenze
+```bash
+pip install openai 'markitdown[all]'
+```
+
+### 3. Configurare la chiave API OpenAI
+
+**Opzione 1: File .env (raccomandato)**
+Crea un file `.env` nella directory del progetto:
+```
+OPENAI_API_KEY=la-tua-chiave-api-openai
+```
+
+**Opzione 2: Variabile d'ambiente**
+```bash
+export OPENAI_API_KEY='la-tua-chiave-api-openai'
+```
+
+**Opzione 3: Parametro da riga di comando**
+```bash
+python ai_analyzer.py notes.json --api-key la-tua-chiave-api-openai
+```
+
+## Utilizzo di AI Analyzer
+
+### Esempi Base
+```bash
+# Analisi di un file di note
+python ai_analyzer.py notes_export_last_10.json
+
+# Specificare file di output
+python ai_analyzer.py notes_export_last_10.json -o analyzed_notes.json
+
+# Test connessione API
+python ai_analyzer.py notes_export_last_10.json --test
+
+# Passare API key direttamente
+python ai_analyzer.py notes_export_last_10.json --api-key sk-your-key-here
+```
+
+### Output Previsto
+
+L'AI analyzer aggiunge un campo `ai_analysis` a ogni nota con la seguente struttura:
+
+```json
+{
+  "title": "Titolo della nota",
+  "body": "Contenuto della nota...",
+  "created": "data di creazione",
+  "modified": "data di modifica",
+  "ai_analysis": [
+    {
+      "concept": "Descrizione del concetto identificato",
+      "link": "https://esempio.com/link-nel-contenuto",
+      "explain": "Spiegazione generata da AI del contenuto del link"
+    },
+    {
+      "concept": "Altro concetto senza link",
+      "link": "",
+      "explain": ""
+    }
+  ]
+}
+```
+
+### Script di Setup
+
+Per semplificare l'uso, è disponibile uno script di setup:
+
+```bash
+source setup_env.sh
+```
+
+Questo script:
+- Attiva l'ambiente virtuale corretto
+- Verifica le dipendenze installate
+- Controlla la presenza della chiave API OpenAI
+- Cambia alla directory di progetto
 
 ## Privacy Note
 

@@ -1,0 +1,17 @@
+# Requirements for Note Voyeur
+# Basic note reading functionality - no external dependencies required
+# (uses only Python standard library + macOS AppleScript)
+
+# AI Analysis Dependencies (optional)
+# Install these for ai_analyzer.py functionality:
+openai>=1.0.0
+markitdown[all]>=0.1.0
+
+# Development Dependencies (optional)
+# Install these for development and testing:
+pytest>=7.0.0
+black>=22.0.0
+flake8>=5.0.0
+
+# Note: The core note_reader.py script has no external dependencies
+# and works with just Python 3.6+ standard library
