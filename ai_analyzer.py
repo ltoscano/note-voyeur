@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 AI Analyzer for Note Voyeur
-Analyzes notes using OpenAI GPT-4 to extract concepts and links,
+Analyzes notes using OpenAI GPT-4 to extract concepts, links, and categories,
 then uses MarkItDown to fetch and summarize linked content.
 """
 
@@ -89,44 +89,53 @@ class AIAnalyzer:
     
     def extract_concepts_and_links(self, note_title: str, note_body: str) -> List[Dict[str, str]]:
         """
-        Extract concepts and links from a note using GPT-4
+        Extract concepts, links, and categories from a note using GPT-4
         
         Args:
             note_title: Title of the note
             note_body: Body content of the note
             
         Returns:
-            List of dictionaries with 'concept' and 'link' keys
+            List of dictionaries with 'concept', 'link', and 'category' keys
         """
         # Prepare the prompt for GPT-4
         prompt = f"""
-Analizza la seguente nota e estrai tutti i concetti principali discussi insieme ai link menzionati.
+Analyze the following note and extract all main concepts discussed along with any mentioned links.
 
-Titolo: {note_title}
+Title: {note_title}
 
-Contenuto:
+Content:
 {note_body}
 
-Per ogni concetto identificato, estrai:
-1. Una descrizione chiara e concisa del concetto (in italiano)
-2. Il link associato se presente nel testo
+For each identified concept, extract:
+1. A clear and concise description of the concept (in English)
+2. The associated link if present in the text
+3. A category classification from these options:
+   - "Foundations & Theory"
+   - "Models & Architectures" 
+   - "Tools & Frameworks"
+   - "Experiments & Applications"
+   - "Evaluation & Alignment"
+   - "Society & Ethics"
+   - "News & Announcements"
 
-Rispondi SOLO con un array JSON nel formato:
+Respond ONLY with a JSON array in this format:
 [
-    {{"concept": "descrizione del concetto", "link": "http://esempio.com"}},
-    {{"concept": "altro concetto", "link": ""}},
+    {{"concept": "concept description", "link": "http://example.com", "category": "category name"}},
+    {{"concept": "another concept", "link": "", "category": "category name"}},
     ...
 ]
 
-Se non ci sono link per un concetto, usa una stringa vuota per "link".
-Se non ci sono concetti identificabili, ritorna un array vuoto [].
+If there are no links for a concept, use an empty string for "link".
+If no identifiable concepts exist, return an empty array [].
+Choose the most appropriate category for each concept based on its content and context.
 """
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4.1",  # Note: using gpt-4 as gpt-4.1 might not be available
                 messages=[
-                    {"role": "system", "content": "Sei un assistente esperto nell'analisi di contenuti e nell'estrazione di concetti chiave. Rispondi sempre con JSON valido."},
+                    {"role": "system", "content": "You are an expert assistant in content analysis and key concept extraction. Always respond with valid JSON."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=1500,
@@ -146,7 +155,8 @@ Se non ci sono concetti identificabili, ritorna un array vuoto [].
                         if isinstance(concept, dict) and 'concept' in concept:
                             validated_concept = {
                                 'concept': str(concept.get('concept', '')),
-                                'link': str(concept.get('link', ''))
+                                'link': str(concept.get('link', '')),
+                                'category': str(concept.get('category', ''))
                             }
                             validated_concepts.append(validated_concept)
                     return validated_concepts
@@ -203,27 +213,27 @@ Se non ci sono concetti identificabili, ritorna un array vuoto [].
             content = content[:max_content_length] + "..."
         
         prompt = f"""
-Analizza il seguente contenuto web e fornisci un riassunto breve ma chiaro in italiano.
+Analyze the following web content and provide a brief but clear summary in English.
 
-Concetto di riferimento: {concept}
+Reference concept: {concept}
 Link: {link}
 
-Contenuto:
+Content:
 {content}
 
-Fornisci un riassunto di massimo 2-3 frasi che spiega:
-1. Di cosa tratta il contenuto
-2. Come si relaziona al concetto di riferimento
-3. Le informazioni più importanti
+Provide a summary of maximum 2-3 sentences that explains:
+1. What the content is about
+2. How it relates to the reference concept
+3. The most important information
 
-Rispondi SOLO con il testo del riassunto, senza formattazione aggiuntiva.
+Respond ONLY with the summary text, without additional formatting.
 """
 
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4.1",
                 messages=[
-                    {"role": "system", "content": "Sei un assistente esperto nel creare riassunti chiari e concisi di contenuti web."},
+                    {"role": "system", "content": "You are an expert assistant in creating clear and concise summaries of web content."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=300,
@@ -238,13 +248,13 @@ Rispondi SOLO con il testo del riassunto, senza formattazione aggiuntiva.
     
     def analyze_note(self, note: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Analyze a single note to extract concepts, links, and explanations
+        Analyze a single note to extract concepts, links, categories, and explanations
         
         Args:
             note: Note dictionary with 'title' and 'body' keys
             
         Returns:
-            Note dictionary with added 'ai_analysis' field
+            Note dictionary with added 'ai_analysis' field containing concept, link, explain, and category
         """
         print(f"🔍 Analyzing note: '{note.get('title', 'Untitled')[:50]}...'")
         
@@ -266,11 +276,13 @@ Rispondi SOLO con il testo del riassunto, senza formattazione aggiuntiva.
         for item in concepts_and_links:
             concept = item.get('concept', '')
             link = item.get('link', '')
+            category = item.get('category', '')
             
             analysis_item = {
                 'concept': concept,
                 'link': link,
-                'explain': ''
+                'explain': '',
+                'category': category
             }
             
             # If there's a link, try to extract and explain content

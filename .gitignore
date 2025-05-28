@@ -38,6 +38,7 @@ ENV/
 
 # Development and testing files
 examples*.py
+example_*.py
 setup_env.sh
 test_env*.py
 final_integration*.py

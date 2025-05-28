@@ -292,11 +292,25 @@ The AI analysis script (`ai_analyzer.py`) generates:
 
 ## AI Analysis Features
 
-Il progetto include uno script `ai_analyzer.py` che utilizza **OpenAI GPT-4** e **MarkItDown** per analizzare automaticamente le note estratte e:
+The project includes an `ai_analyzer.py` script that uses **OpenAI GPT-4** and **MarkItDown** to automatically analyze extracted notes and:
 
-1. **Estrarre concetti chiave** da ogni nota usando intelligenza artificiale
-2. **Identificare e analizzare link** presenti nelle note
-3. **Generare spiegazioni** del contenuto dei link utilizzando MarkItDown per l'estrazione e GPT-4 per il riassunto
+1. **Extract key concepts** from each note using artificial intelligence
+2. **Identify and analyze links** present in the notes
+3. **Generate explanations** of link content using MarkItDown for extraction and GPT-4 for summarization
+4. **Categorize concepts** into predefined categories:
+   - Foundations & Theory
+   - Models & Architectures
+   - Tools & Frameworks
+   - Experiments & Applications
+   - Evaluation & Alignment
+   - Society & Ethics
+   - News & Announcements
+
+The AI analysis adds an `ai_analysis` field to each note containing an array of objects with:
+- `concept`: Description of the identified concept
+- `link`: Associated URL (if any)
+- `explain`: AI-generated explanation of linked content
+- `category`: Assigned category classification
 
 ## Installazione delle Dipendenze
 
@@ -347,26 +361,28 @@ python ai_analyzer.py notes_export_last_10.json --test
 python ai_analyzer.py notes_export_last_10.json --api-key sk-your-key-here
 ```
 
-### Output Previsto
+### Expected Output
 
-L'AI analyzer aggiunge un campo `ai_analysis` a ogni nota con la seguente struttura:
+The AI analyzer adds an `ai_analysis` field to each note with the following structure:
 
 ```json
 {
-  "title": "Titolo della nota",
-  "body": "Contenuto della nota...",
-  "created": "data di creazione",
-  "modified": "data di modifica",
+  "title": "Note title",
+  "body": "Note content...",
+  "created": "creation date",
+  "modified": "modification date",
   "ai_analysis": [
     {
-      "concept": "Descrizione del concetto identificato",
-      "link": "https://esempio.com/link-nel-contenuto",
-      "explain": "Spiegazione generata da AI del contenuto del link"
+      "concept": "Description of identified concept",
+      "link": "https://example.com/link-in-content",
+      "explain": "AI-generated explanation of link content",
+      "category": "Tools & Frameworks"
     },
     {
-      "concept": "Altro concetto senza link",
+      "concept": "Another concept without link",
       "link": "",
-      "explain": ""
+      "explain": "",
+      "category": "Foundations & Theory"
     }
   ]
 }
