@@ -43,53 +43,182 @@ def read_all_notes(limit=10):
         return None
 
 
-def read_notes_with_filters(limit=5, from_date=None):
+def read_notes_with_filters(limit=5, from_date=None, to_date=None):
     """
     Reads notes from macOS Notes app with date and limit filters
     Returns individual note data filtered by date and limited by count
+    
+    Args:
+        limit: Maximum number of notes to return
+        from_date: Only return notes modified on or after this date (forward filtering)
+        to_date: Only return notes modified before this date (reverse filtering)
     """
-    # If no from_date specified, use current date minus 30 days as reasonable default
-    if from_date is None:
+    # If no dates specified, use current date minus 30 days as reasonable default
+    if from_date is None and to_date is None:
         from_date = datetime.now() - timedelta(days=30)
     
-    # Convert Python datetime to AppleScript date format
-    applescript_date = from_date.strftime("%m/%d/%Y")
-    
-    # More efficient script that processes notes in reverse order (newest first)
-    script = f'''
-    tell application "Notes"
-        set noteData to {{}}
-        set noteCount to 0
-        set filterDate to date "{applescript_date}"
-        
-        -- Get notes in reverse order (newest first) for better performance
-        set allNotes to reverse of (notes of default account)
-        
-        repeat with n in allNotes
-            set noteModDate to modification date of n
-            if noteModDate ≥ filterDate then
-                set noteCount to noteCount + 1
-                if noteCount > {limit} then exit repeat
+    # AppleScript with dynamic filtering
+    if from_date is not None and to_date is not None:
+        # Range filtering script
+        script = f'''
+        tell application "Notes"
+            set noteData to {{}}
+            set noteCount to 0
+            set processedCount to 0
+            
+            repeat with n in notes of default account
+                set processedCount to processedCount + 1
+                
                 try
+                    set fromFilterDate to current date
+                    set day of fromFilterDate to {from_date.day}
+                    set month of fromFilterDate to {from_date.month}
+                    set year of fromFilterDate to {from_date.year}
+                    set hours of fromFilterDate to 0
+                    set minutes of fromFilterDate to 0
+                    set seconds of fromFilterDate to 0
+                    
+                    set toFilterDate to current date
+                    set day of toFilterDate to {to_date.day}
+                    set month of toFilterDate to {to_date.month}
+                    set year of toFilterDate to {to_date.year}
+                    set hours of toFilterDate to 23
+                    set minutes of toFilterDate to 59
+                    set seconds of toFilterDate to 59
+                    
+                    set noteModDate to modification date of n
+                    if noteModDate ≥ fromFilterDate and noteModDate ≤ toFilterDate then
+                        set noteCount to noteCount + 1
+                        if noteCount > {limit} then exit repeat
+                        set noteInfo to (name of n) & "|" & (body of n) & "|" & (creation date of n) & "|" & (modification date of n)
+                        set end of noteData to noteInfo
+                    end if
+                on error
+                    -- Skip notes that can't be read
+                end try
+                
+                -- Limit processing to avoid timeout (check only first 500 notes)
+                if processedCount > 500 then exit repeat
+            end repeat
+            
+            set AppleScript's text item delimiters to "~~~"
+            set noteDataString to noteData as string
+            set AppleScript's text item delimiters to ""
+            return noteDataString
+        end tell
+        '''
+    elif from_date is not None:
+        # Forward filtering script
+        script = f'''
+        tell application "Notes"
+            set noteData to {{}}
+            set noteCount to 0
+            set processedCount to 0
+            
+            repeat with n in notes of default account
+                set processedCount to processedCount + 1
+                
+                try
+                    set filterDate to current date
+                    set day of filterDate to {from_date.day}
+                    set month of filterDate to {from_date.month}
+                    set year of filterDate to {from_date.year}
+                    set hours of filterDate to 0
+                    set minutes of filterDate to 0
+                    set seconds of filterDate to 0
+                    
+                    set noteModDate to modification date of n
+                    if noteModDate ≥ filterDate then
+                        set noteCount to noteCount + 1
+                        if noteCount > {limit} then exit repeat
+                        set noteInfo to (name of n) & "|" & (body of n) & "|" & (creation date of n) & "|" & (modification date of n)
+                        set end of noteData to noteInfo
+                    end if
+                on error
+                    -- Skip notes that can't be read
+                end try
+                
+                -- Limit processing to avoid timeout (check only first 500 notes)
+                if processedCount > 500 then exit repeat
+            end repeat
+            
+            set AppleScript's text item delimiters to "~~~"
+            set noteDataString to noteData as string
+            set AppleScript's text item delimiters to ""
+            return noteDataString
+        end tell
+        '''
+    elif to_date is not None:
+        # Reverse filtering script
+        script = f'''
+        tell application "Notes"
+            set noteData to {{}}
+            set noteCount to 0
+            set processedCount to 0
+            
+            repeat with n in notes of default account
+                set processedCount to processedCount + 1
+                
+                try
+                    set filterDate to current date
+                    set day of filterDate to {to_date.day}
+                    set month of filterDate to {to_date.month}
+                    set year of filterDate to {to_date.year}
+                    set hours of filterDate to 23
+                    set minutes of filterDate to 59
+                    set seconds of filterDate to 59
+                    
+                    set noteModDate to modification date of n
+                    if noteModDate < filterDate then
+                        set noteCount to noteCount + 1
+                        if noteCount > {limit} then exit repeat
+                        set noteInfo to (name of n) & "|" & (body of n) & "|" & (creation date of n) & "|" & (modification date of n)
+                        set end of noteData to noteInfo
+                    end if
+                on error
+                    -- Skip notes that can't be read
+                end try
+                
+                -- Limit processing to avoid timeout (check only first 500 notes)
+                if processedCount > 500 then exit repeat
+            end repeat
+            
+            set AppleScript's text item delimiters to "~~~"
+            set noteDataString to noteData as string
+            set AppleScript's text item delimiters to ""
+            return noteDataString
+        end tell
+        '''
+    else:
+        # No date filtering script
+        script = f'''
+        tell application "Notes"
+            set noteData to {{}}
+            set noteCount to 0
+            set processedCount to 0
+            
+            repeat with n in notes of default account
+                set processedCount to processedCount + 1
+                
+                try
+                    set noteCount to noteCount + 1
+                    if noteCount > {limit} then exit repeat
                     set noteInfo to (name of n) & "|" & (body of n) & "|" & (creation date of n) & "|" & (modification date of n)
                     set end of noteData to noteInfo
                 on error
                     -- Skip notes that can't be read
                 end try
-            end if
+                
+                -- Limit processing to avoid timeout (check only first 500 notes)
+                if processedCount > 500 then exit repeat
+            end repeat
             
-            -- Exit early if we've checked enough recent notes
-            if noteCount = 0 and (current date) - noteModDate > 90 * days then
-                exit repeat
-            end if
-        end repeat
-        
-        set AppleScript's text item delimiters to "~~~"
-        set noteDataString to noteData as string
-        set AppleScript's text item delimiters to ""
-        return noteDataString
-    end tell
-    '''
+            set AppleScript's text item delimiters to "~~~"
+            set noteDataString to noteData as string
+            set AppleScript's text item delimiters to ""
+            return noteDataString
+        end tell
+        '''
     
     try:
         result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=60)
@@ -202,18 +331,32 @@ def count_notes_from_date(from_date):
     if from_date is None:
         from_date = datetime.now() - timedelta(days=30)
     
-    applescript_date = from_date.strftime("%m/%d/%Y")
-    
     script = f'''
     tell application "Notes"
         set noteCount to 0
-        set filterDate to date "{applescript_date}"
+        set processedCount to 0
+        
+        set filterDate to current date
+        set day of filterDate to {from_date.day}
+        set month of filterDate to {from_date.month}
+        set year of filterDate to {from_date.year}
+        set hours of filterDate to 0
+        set minutes of filterDate to 0
+        set seconds of filterDate to 0
         
         repeat with n in notes of default account
-            set noteModDate to modification date of n
-            if noteModDate ≥ filterDate then
-                set noteCount to noteCount + 1
-            end if
+            set processedCount to processedCount + 1
+            try
+                set noteModDate to modification date of n
+                if noteModDate ≥ filterDate then
+                    set noteCount to noteCount + 1
+                end if
+            on error
+                -- Skip notes that can't be read
+            end try
+            
+            -- Limit processing to avoid timeout (check only first 500 notes)
+            if processedCount > 500 then exit repeat
         end repeat
         
         return noteCount
@@ -229,6 +372,116 @@ def count_notes_from_date(from_date):
             return 0
     except Exception as e:
         print(f"Error counting notes from date: {e}")
+        return 0
+
+
+def count_notes_to_date(to_date):
+    """
+    Count notes modified before a specific date (reverse filtering)
+    """
+    if to_date is None:
+        return 0
+    
+    script = f'''
+    tell application "Notes"
+        set noteCount to 0
+        set processedCount to 0
+        
+        set filterDate to current date
+        set day of filterDate to {to_date.day}
+        set month of filterDate to {to_date.month}
+        set year of filterDate to {to_date.year}
+        set hours of filterDate to 23
+        set minutes of filterDate to 59
+        set seconds of filterDate to 59
+        
+        repeat with n in notes of default account
+            set processedCount to processedCount + 1
+            try
+                set noteModDate to modification date of n
+                if noteModDate < filterDate then
+                    set noteCount to noteCount + 1
+                end if
+            on error
+                -- Skip notes that can't be read
+            end try
+            
+            -- Limit processing to avoid timeout (check only first 500 notes)
+            if processedCount > 500 then exit repeat
+        end repeat
+        
+        return noteCount
+    end tell
+    '''
+    
+    try:
+        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=20)
+        if result.returncode == 0:
+            return int(result.stdout.strip())
+        else:
+            print(f"Error counting notes to date: {result.stderr}")
+            return 0
+    except Exception as e:
+        print(f"Error counting notes to date: {e}")
+        return 0
+
+
+def count_notes_in_range(from_date, to_date):
+    """
+    Count notes modified within a date range
+    """
+    if from_date is None or to_date is None:
+        return 0
+    
+    script = f'''
+    tell application "Notes"
+        set noteCount to 0
+        set processedCount to 0
+        
+        set fromFilterDate to current date
+        set day of fromFilterDate to {from_date.day}
+        set month of fromFilterDate to {from_date.month}
+        set year of fromFilterDate to {from_date.year}
+        set hours of fromFilterDate to 0
+        set minutes of fromFilterDate to 0
+        set seconds of fromFilterDate to 0
+        
+        set toFilterDate to current date
+        set day of toFilterDate to {to_date.day}
+        set month of toFilterDate to {to_date.month}
+        set year of toFilterDate to {to_date.year}
+        set hours of toFilterDate to 23
+        set minutes of toFilterDate to 59
+        set seconds of toFilterDate to 59
+        
+        repeat with n in notes of default account
+            set processedCount to processedCount + 1
+            try
+                set noteModDate to modification date of n
+                if noteModDate ≥ fromFilterDate and noteModDate ≤ toFilterDate then
+                    set noteCount to noteCount + 1
+                end if
+            on error
+                -- Skip notes that can't be read
+            end try
+            
+            -- Limit processing to avoid timeout (check only first 500 notes)
+            if processedCount > 500 then exit repeat
+        end repeat
+        
+        return noteCount
+    end tell
+    '''
+    
+    try:
+        result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=20)
+        if result.returncode == 0:
+            return int(result.stdout.strip())
+        else:
+            print(f"Error counting notes in range: {result.stderr}")
+            return 0
+    except Exception as e:
+        print(f"Error counting notes in range: {e}")
         return 0
 
 
@@ -311,6 +564,8 @@ def main():
                        help='Number of notes to extract (default: 5)')
     parser.add_argument('-d', '--from-date', type=str, default=None,
                        help='Extract notes from this date onwards. Formats: YYYY-MM-DD, DD/MM/YYYY, or days ago (e.g., 7)')
+    parser.add_argument('-t', '--to-date', type=str, default=None,
+                       help='Extract notes up to this date (reverse filtering). Formats: YYYY-MM-DD, DD/MM/YYYY, or days ago (e.g., 7)')
     parser.add_argument('-c', '--count', action='store_true',
                        help='Count total notes and notes matching criteria')
     parser.add_argument('--stats-only', action='store_true',
@@ -318,8 +573,9 @@ def main():
     
     args = parser.parse_args()
     
-    # Parse the from_date
+    # Parse the dates
     from_date = parse_date_string(args.from_date) if args.from_date else None
+    to_date = parse_date_string(args.to_date) if args.to_date else None
     
     print("=" * 60)
     print("NOTE VOYEUR - macOS Notes Extractor")
@@ -331,9 +587,20 @@ def main():
         print(f"\nSTATISTICS:")
         print(f"Total notes in Notes app: {total_notes}")
         
-        if from_date:
+        if from_date and to_date:
+            # Range filtering statistics
+            filtered_count = count_notes_in_range(from_date, to_date)
+            print(f"Notes modified between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}: {filtered_count}")
+            print(f"Will extract: {min(args.limit, filtered_count)} notes")
+        elif from_date:
+            # Forward filtering statistics
             filtered_count = count_notes_from_date(from_date)
             print(f"Notes modified from {from_date.strftime('%Y-%m-%d')}: {filtered_count}")
+            print(f"Will extract: {min(args.limit, filtered_count)} notes")
+        elif to_date:
+            # Reverse filtering statistics
+            filtered_count = count_notes_to_date(to_date)
+            print(f"Notes modified before {to_date.strftime('%Y-%m-%d')}: {filtered_count}")
             print(f"Will extract: {min(args.limit, filtered_count)} notes")
         else:
             print(f"Will extract: {min(args.limit, total_notes)} most recent notes")
@@ -342,10 +609,16 @@ def main():
     if args.stats_only:
         return
     
-    # Extract notes
-    if from_date:
+    # Extract notes with appropriate filtering
+    if from_date and to_date:
+        print(f"\nExtracting up to {args.limit} notes between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}...")
+        notes = read_notes_with_filters(args.limit, from_date, to_date)
+    elif from_date:
         print(f"\nExtracting up to {args.limit} notes modified from {from_date.strftime('%Y-%m-%d')}...")
-        notes = read_notes_with_filters(args.limit, from_date)
+        notes = read_notes_with_filters(args.limit, from_date, None)
+    elif to_date:
+        print(f"\nExtracting up to {args.limit} notes modified before {to_date.strftime('%Y-%m-%d')}...")
+        notes = read_notes_with_filters(args.limit, None, to_date)
     else:
         print(f"\nExtracting last {args.limit} notes...")
         notes = read_notes_structured(args.limit)
@@ -355,8 +628,12 @@ def main():
         display_notes(notes)
         
         # Save to file with descriptive name
-        if from_date:
-            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+        if from_date and to_date:
+            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+        elif from_date:
+            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+        elif to_date:
+            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
         else:
             filename = f"notes_export_last_{args.limit}.json"
         
