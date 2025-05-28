@@ -568,6 +568,92 @@ def save_notes_to_file(notes, filename="notes_export.json"):
         print(f"Error saving notes: {e}")
 
 
+def mark_notes_with_voyeur_tag(notes):
+    """
+    Mark notes by adding 'NOTE-VOYEUR: TARGET ACQUIRED!' to their title
+    Modifies the note body to include the new title as the first line
+    
+    Args:
+        notes: List of note dictionaries to mark
+    
+    Returns:
+        int: Number of notes successfully marked
+    """
+    if not notes:
+        print("No notes to mark.")
+        return 0
+    
+    marked_count = 0
+    mark_prefix = "NOTE-VOYEUR: TARGET ACQUIRED!"
+    
+    print(f"\n🎯 MARKING {len(notes)} NOTES WITH VOYEUR TAG...")
+    print("=" * 60)
+    
+    for i, note in enumerate(notes, 1):
+        try:
+            # Check if note is already marked
+            if note['title'].startswith(mark_prefix):
+                print(f"Note #{i}: '{note['title'][:50]}...' - ALREADY MARKED, skipping")
+                continue
+            
+            # Create new title with mark prefix
+            original_title = note['title']
+            new_title = f"{mark_prefix} {original_title}"
+            
+            # Get the original body content
+            original_body = note['body']
+            
+            # Create new body with the new title as first line
+            # The Notes app uses HTML format, so we create proper HTML structure
+            new_body = f"<div><h1>{new_title}</h1></div>\n<div><br></div>\n{original_body}"
+            
+            # AppleScript to modify the note
+            # We need to find the note by title and modification date to ensure we get the right one
+            escaped_title = original_title.replace('"', '\\"')
+            escaped_body = new_body.replace('"', '\\"').replace('\n', '\\n')
+            
+            script = f'''
+            tell application "Notes"
+                set targetFound to false
+                repeat with n in notes of default account
+                    try
+                        if (name of n) as string is "{escaped_title}" then
+                            -- Update the note body with new title
+                            set body of n to "{escaped_body}"
+                            set targetFound to true
+                            exit repeat
+                        end if
+                    on error
+                        -- Skip notes that can't be accessed
+                    end try
+                end repeat
+                return targetFound
+            end tell
+            '''
+            
+            # Execute the marking script
+            result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=30)
+            
+            if result.returncode == 0 and result.stdout.strip().lower() == "true":
+                marked_count += 1
+                print(f"✅ Note #{i}: '{original_title[:50]}...' - MARKED SUCCESSFULLY")
+                # Update the note object for display purposes
+                note['title'] = new_title
+                note['body'] = new_body
+            else:
+                print(f"❌ Note #{i}: '{original_title[:50]}...' - MARKING FAILED")
+                if result.stderr:
+                    print(f"   Error: {result.stderr.strip()}")
+                    
+        except Exception as e:
+            print(f"❌ Note #{i}: Error marking note - {e}")
+    
+    print("=" * 60)
+    print(f"🎯 MARKING COMPLETED: {marked_count}/{len(notes)} notes marked successfully")
+    
+    return marked_count
+
+
 def main():
     """
     Main function with command line argument support
@@ -581,6 +667,8 @@ def main():
                        help='Extract notes up to this date (reverse filtering). Formats: YYYY-MM-DD, DD/MM/YYYY, or days ago (e.g., 7)')
     parser.add_argument('--filter-tag', type=str, default=None,
                        help='Filter notes containing this tag/string in title or body (case-insensitive)')
+    parser.add_argument('--mark', action='store_true',
+                       help='Mark extracted notes by adding "NOTE-VOYEUR: TARGET ACQUIRED!" to their title')
     parser.add_argument('-c', '--count', action='store_true',
                        help='Count total notes and notes matching criteria')
     parser.add_argument('--stats-only', action='store_true',
@@ -634,39 +722,49 @@ def main():
     
     # Extract notes with appropriate filtering
     filter_msg = f" (filtering by tag: '{filter_tag}')" if filter_tag else ""
+    mark_msg = " [WILL MARK WITH VOYEUR TAG]" if args.mark else ""
     
     if from_date and to_date:
-        print(f"\nExtracting up to {args.limit} notes between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        print(f"\nExtracting up to {args.limit} notes between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}{filter_msg}{mark_msg}...")
         notes = read_notes_with_filters(args.limit, from_date, to_date, filter_tag)
     elif from_date:
-        print(f"\nExtracting up to {args.limit} notes modified from {from_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        print(f"\nExtracting up to {args.limit} notes modified from {from_date.strftime('%Y-%m-%d')}{filter_msg}{mark_msg}...")
         notes = read_notes_with_filters(args.limit, from_date, None, filter_tag)
     elif to_date:
-        print(f"\nExtracting up to {args.limit} notes modified before {to_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        print(f"\nExtracting up to {args.limit} notes modified before {to_date.strftime('%Y-%m-%d')}{filter_msg}{mark_msg}...")
         notes = read_notes_with_filters(args.limit, None, to_date, filter_tag)
     else:
         if filter_tag:
-            print(f"\nExtracting up to {args.limit} notes{filter_msg}...")
+            print(f"\nExtracting up to {args.limit} notes{filter_msg}{mark_msg}...")
             notes = read_notes_with_filters(args.limit, None, None, filter_tag)
         else:
-            print(f"\nExtracting last {args.limit} notes...")
+            print(f"\nExtracting last {args.limit} notes{mark_msg}...")
             notes = read_notes_structured(args.limit)
     
     # Display results
     if notes:
         display_notes(notes)
         
+        # Mark notes if requested
+        if args.mark:
+            marked_count = mark_notes_with_voyeur_tag(notes)
+            if marked_count > 0:
+                print(f"\n✅ Successfully marked {marked_count} notes with VOYEUR tag!")
+            else:
+                print(f"\n⚠️  No notes were marked.")
+        
         # Save to file with descriptive name
         tag_suffix = f"_tag_{filter_tag.replace(' ', '_')}" if filter_tag else ""
+        mark_suffix = "_marked" if args.mark else ""
         
         if from_date and to_date:
-            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
+            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
         elif from_date:
-            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
+            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
         elif to_date:
-            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
+            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
         else:
-            filename = f"notes_export_last{tag_suffix}_{args.limit}.json"
+            filename = f"notes_export_last{tag_suffix}{mark_suffix}_{args.limit}.json"
         
         save_notes_to_file(notes, filename)
     else:

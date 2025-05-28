@@ -136,4 +136,95 @@ python3 note_reader.py --from-date 7 --filter-tag "meeting" -n 10
 - ✅ Created `examples_with_tags.py` with comprehensive demonstrations
 - ✅ All filtering combinations documented and tested
 
+## Note Marking Feature - COMPLETED ✅
+
+Date: May 28, 2025
+
+### Feature Description
+Added new `--mark` option that marks extracted notes by adding "NOTE-VOYEUR: TARGET ACQUIRED!" to their title. The feature modifies the note content to include the marked title as the first line and automatically skips notes that are already marked.
+
+### Implementation Details
+- Added `mark_notes_with_voyeur_tag()` function to handle note modification
+- Enhanced command line argument parser with `--mark` option
+- Updated main function to handle marking after note extraction
+- Added intelligent detection of already marked notes to prevent duplicates
+- Enhanced filename generation to include "_marked" suffix for marked notes
+- Integrated marking with all existing filtering options (date, tag, range)
+
+### Test Results
+
+#### 1. Basic Note Marking
+```bash
+python3 note_reader.py -n 2 --mark
+```
+**Result**: ✅ WORKING
+- Successfully marked 2 notes with "NOTE-VOYEUR: TARGET ACQUIRED!" prefix
+- Notes content modified to include new title as first line
+- Generated filename: `notes_export_last_marked_2.json`
+- Marked notes display new title in console output
+
+#### 2. Skip Already Marked Notes
+```bash
+python3 note_reader.py -n 2 --mark
+```
+**Result**: ✅ WORKING
+- Correctly detected already marked notes
+- Skipped marking with message "ALREADY MARKED, skipping"
+- No duplicate marking performed
+- Completed with "No notes were marked" message
+
+#### 3. Combined Date Range + Tag + Marking
+```bash
+python3 note_reader.py -d 2025-04-01 -t 2025-04-30 --filter-tag "WPE" -n 3 --mark
+```
+**Result**: ✅ WORKING
+- Found 1 note matching criteria (April 2025 + WPE tag)
+- Successfully marked the note
+- Generated filename: `notes_export_20250401_to_20250430_tag_WPE_marked_limit_3.json`
+- All filtering + marking worked together seamlessly
+
+#### 4. Marking with Non-existent Filter
+```bash
+python3 note_reader.py --filter-tag "nonexistent_tag_12345" -n 5 --mark
+```
+**Result**: ✅ WORKING
+- Correctly handled case with no matching notes
+- Returned "No notes found matching the criteria"
+- No marking attempted (graceful handling)
+- No errors generated
+
+#### 5. Visual Feedback and Messages
+```bash
+python3 note_reader.py -n 2 --mark
+```
+**Result**: ✅ WORKING
+- Clear visual indicators with emojis (🎯, ✅, ⚠️)
+- Progress messages during marking process
+- Success/failure feedback for each note
+- Final summary with marked count
+- Extraction messages show "[WILL MARK WITH VOYEUR TAG]" indicator
+
+### Key Features Verified
+- ✅ Note title modification with VOYEUR prefix
+- ✅ HTML content modification to include new title
+- ✅ Automatic detection and skipping of already marked notes
+- ✅ Integration with all existing filtering options
+- ✅ Enhanced filename generation with "_marked" suffix
+- ✅ Clear visual feedback and progress indicators
+- ✅ Graceful handling of edge cases (no notes found)
+- ✅ AppleScript-based note modification works reliably
+- ✅ Proper escaping of special characters in titles
+
+### Security Considerations
+- ✅ Proper escaping of quotes and special characters in AppleScript
+- ✅ Safe handling of HTML content in note bodies
+- ✅ No data loss - original content preserved with new title added
+- ✅ Automatic backup through JSON export of marked notes
+
+### Documentation Updates
+- ✅ README.md enhanced with marking examples and options
+- ✅ Command line help text updated with --mark option
+- ✅ Created `examples_with_marking.py` for comprehensive demonstrations
+- ✅ Output filename patterns documented for marked notes
+
 **Project Status**: COMPLETE ✅

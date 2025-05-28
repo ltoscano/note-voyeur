@@ -123,6 +123,10 @@ python3 note_reader.py -d 3 -n 5 -c
   - Useful for reading older notes chronologically backwards
 - `--filter-tag`: **NEW!** Filter notes containing this tag/string in title or body (case-insensitive)
   - Can be combined with date filtering for precise extraction
+- `--mark`: **NEW!** Mark extracted notes by adding "NOTE-VOYEUR: TARGET ACQUIRED!" to their title
+  - Modifies the note content to include the marked title as the first line
+  - Automatically skips notes that are already marked
+  - Can be combined with any filtering option
 - `-c, --count`: Show count of total notes and filtered notes
 - `--stats-only`: Show only statistics, don't extract notes
 
@@ -183,6 +187,19 @@ python3 note_reader.py -d 2025-04-01 -t 2025-04-30 --filter-tag "meeting" -n 20
 # Case-insensitive tag search with statistics
 python3 note_reader.py --filter-tag "Python" -n 5 -c
 
+# MARKING EXAMPLES (NEW!)
+# Mark the last 3 notes with VOYEUR tag
+python3 note_reader.py -n 3 --mark
+
+# Mark notes containing "meeting" from last week
+python3 note_reader.py --filter-tag "meeting" -d 7 -n 5 --mark
+
+# Mark notes from a specific date range with tag filtering
+python3 note_reader.py -d 2025-04-01 -t 2025-04-30 --filter-tag "project" -n 10 --mark
+
+# Mark recent notes (already marked notes will be skipped)
+python3 note_reader.py -d 3 -n 5 --mark
+
 # Check how many notes you have total
 python3 note_reader.py --stats-only
 ```
@@ -209,6 +226,7 @@ The script generates:
   - `notes_export_before_YYYYMMDD_limit_X.json` (reverse filtering) 
   - `notes_export_YYYYMMDD_to_YYYYMMDD_limit_X.json` (range filtering)
   - `notes_export_*_tag_TAGNAME_*.json` (tag filtering - combined with other filters)
+  - `notes_export_*_marked_*.json` (marked notes - includes "_marked" suffix)
 
 ## Privacy Note
 
