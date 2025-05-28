@@ -43,7 +43,7 @@ def read_all_notes(limit=10):
         return None
 
 
-def read_notes_with_filters(limit=5, from_date=None, to_date=None):
+def read_notes_with_filters(limit=5, from_date=None, to_date=None, filter_tag=None):
     """
     Reads notes from macOS Notes app with date and limit filters
     Returns individual note data filtered by date and limited by count
@@ -52,6 +52,7 @@ def read_notes_with_filters(limit=5, from_date=None, to_date=None):
         limit: Maximum number of notes to return
         from_date: Only return notes modified on or after this date (forward filtering)
         to_date: Only return notes modified before this date (reverse filtering)
+        filter_tag: Only return notes containing this string in title or body (case-insensitive)
     """
     # If no dates specified, use current date minus 30 days as reasonable default
     if from_date is None and to_date is None:
@@ -237,6 +238,18 @@ def read_notes_with_filters(limit=5, from_date=None, to_date=None):
                             "modified": parts[3].strip()
                         }
                         notes.append(note)
+            
+            # Apply tag filter if specified
+            if filter_tag:
+                filtered_notes = []
+                filter_tag_lower = filter_tag.lower()
+                for note in notes:
+                    # Check if filter_tag is in title or body (case-insensitive)
+                    title_lower = note["title"].lower()
+                    body_lower = note["body"].lower()
+                    if filter_tag_lower in title_lower or filter_tag_lower in body_lower:
+                        filtered_notes.append(note)
+                notes = filtered_notes
             
             return notes
         else:
@@ -566,6 +579,8 @@ def main():
                        help='Extract notes from this date onwards. Formats: YYYY-MM-DD, DD/MM/YYYY, or days ago (e.g., 7)')
     parser.add_argument('-t', '--to-date', type=str, default=None,
                        help='Extract notes up to this date (reverse filtering). Formats: YYYY-MM-DD, DD/MM/YYYY, or days ago (e.g., 7)')
+    parser.add_argument('--filter-tag', type=str, default=None,
+                       help='Filter notes containing this tag/string in title or body (case-insensitive)')
     parser.add_argument('-c', '--count', action='store_true',
                        help='Count total notes and notes matching criteria')
     parser.add_argument('--stats-only', action='store_true',
@@ -576,6 +591,7 @@ def main():
     # Parse the dates
     from_date = parse_date_string(args.from_date) if args.from_date else None
     to_date = parse_date_string(args.to_date) if args.to_date else None
+    filter_tag = args.filter_tag
     
     print("=" * 60)
     print("NOTE VOYEUR - macOS Notes Extractor")
@@ -587,55 +603,70 @@ def main():
         print(f"\nSTATISTICS:")
         print(f"Total notes in Notes app: {total_notes}")
         
+        if filter_tag:
+            print(f"Tag filter: '{filter_tag}' (applied after extraction)")
+        
         if from_date and to_date:
             # Range filtering statistics
             filtered_count = count_notes_in_range(from_date, to_date)
             print(f"Notes modified between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}: {filtered_count}")
-            print(f"Will extract: {min(args.limit, filtered_count)} notes")
+            base_extract = min(args.limit, filtered_count)
+            print(f"Will extract: {base_extract} notes{' (before tag filtering)' if filter_tag else ''}")
         elif from_date:
             # Forward filtering statistics
             filtered_count = count_notes_from_date(from_date)
             print(f"Notes modified from {from_date.strftime('%Y-%m-%d')}: {filtered_count}")
-            print(f"Will extract: {min(args.limit, filtered_count)} notes")
+            base_extract = min(args.limit, filtered_count)
+            print(f"Will extract: {base_extract} notes{' (before tag filtering)' if filter_tag else ''}")
         elif to_date:
             # Reverse filtering statistics
             filtered_count = count_notes_to_date(to_date)
             print(f"Notes modified before {to_date.strftime('%Y-%m-%d')}: {filtered_count}")
-            print(f"Will extract: {min(args.limit, filtered_count)} notes")
+            base_extract = min(args.limit, filtered_count)
+            print(f"Will extract: {base_extract} notes{' (before tag filtering)' if filter_tag else ''}")
         else:
-            print(f"Will extract: {min(args.limit, total_notes)} most recent notes")
+            base_extract = min(args.limit, total_notes)
+            print(f"Will extract: {base_extract} most recent notes{' (before tag filtering)' if filter_tag else ''}")
     
     # Exit if only stats requested
     if args.stats_only:
         return
     
     # Extract notes with appropriate filtering
+    filter_msg = f" (filtering by tag: '{filter_tag}')" if filter_tag else ""
+    
     if from_date and to_date:
-        print(f"\nExtracting up to {args.limit} notes between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}...")
-        notes = read_notes_with_filters(args.limit, from_date, to_date)
+        print(f"\nExtracting up to {args.limit} notes between {from_date.strftime('%Y-%m-%d')} and {to_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        notes = read_notes_with_filters(args.limit, from_date, to_date, filter_tag)
     elif from_date:
-        print(f"\nExtracting up to {args.limit} notes modified from {from_date.strftime('%Y-%m-%d')}...")
-        notes = read_notes_with_filters(args.limit, from_date, None)
+        print(f"\nExtracting up to {args.limit} notes modified from {from_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        notes = read_notes_with_filters(args.limit, from_date, None, filter_tag)
     elif to_date:
-        print(f"\nExtracting up to {args.limit} notes modified before {to_date.strftime('%Y-%m-%d')}...")
-        notes = read_notes_with_filters(args.limit, None, to_date)
+        print(f"\nExtracting up to {args.limit} notes modified before {to_date.strftime('%Y-%m-%d')}{filter_msg}...")
+        notes = read_notes_with_filters(args.limit, None, to_date, filter_tag)
     else:
-        print(f"\nExtracting last {args.limit} notes...")
-        notes = read_notes_structured(args.limit)
+        if filter_tag:
+            print(f"\nExtracting up to {args.limit} notes{filter_msg}...")
+            notes = read_notes_with_filters(args.limit, None, None, filter_tag)
+        else:
+            print(f"\nExtracting last {args.limit} notes...")
+            notes = read_notes_structured(args.limit)
     
     # Display results
     if notes:
         display_notes(notes)
         
         # Save to file with descriptive name
+        tag_suffix = f"_tag_{filter_tag.replace(' ', '_')}" if filter_tag else ""
+        
         if from_date and to_date:
-            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
         elif from_date:
-            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
         elif to_date:
-            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}_limit_{args.limit}.json"
+            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}{tag_suffix}_limit_{args.limit}.json"
         else:
-            filename = f"notes_export_last_{args.limit}.json"
+            filename = f"notes_export_last{tag_suffix}_{args.limit}.json"
         
         save_notes_to_file(notes, filename)
     else:
