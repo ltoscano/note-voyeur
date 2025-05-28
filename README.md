@@ -79,20 +79,32 @@ python3 note_reader.py
 
 ### Advanced Usage with Parameters
 
-The script now supports command-line arguments for flexible note extraction:
+The script now supports command-line arguments for flexible note extraction including **reverse chronological filtering**:
 
 ```bash
 # Extract specific number of notes
 python3 note_reader.py -n 10
 
-# Extract notes from a specific date (YYYY-MM-DD format)
+# FORWARD FILTERING: Extract notes from a specific date onwards
 python3 note_reader.py -d 2025-05-01 -n 20
 
-# Extract notes from 7 days ago
+# REVERSE FILTERING: Extract notes before a specific date (NEW!)
+python3 note_reader.py -t 2025-04-30 -n 15
+
+# Extract notes from 7 days ago onwards
 python3 note_reader.py -d 7 -n 15
+
+# Extract notes before 30 days ago (reverse filtering)
+python3 note_reader.py -t 30 -n 10
+
+# Extract notes between two dates
+python3 note_reader.py -d 2025-04-01 -t 2025-04-30 -n 25
 
 # Show statistics only (don't extract notes)
 python3 note_reader.py --stats-only
+
+# Show statistics for reverse filtering
+python3 note_reader.py -t 30 --stats-only
 
 # Show statistics and extract notes
 python3 note_reader.py -d 3 -n 5 -c
@@ -101,13 +113,27 @@ python3 note_reader.py -d 3 -n 5 -c
 ### Command Line Options
 
 - `-n, --limit`: Number of notes to extract (default: 5)
-- `-d, --from-date`: Extract notes from this date onwards
+- `-d, --from-date`: Extract notes from this date onwards (forward filtering)
   - Formats supported:
     - `YYYY-MM-DD` (e.g., `2025-05-01`)
     - `DD/MM/YYYY` (e.g., `01/05/2025`)
     - Days ago as number (e.g., `7` for 7 days ago)
+- `-t, --to-date`: **NEW!** Extract notes before this date (reverse filtering)
+  - Same formats as `--from-date`
+  - Useful for reading older notes chronologically backwards
 - `-c, --count`: Show count of total notes and filtered notes
 - `--stats-only`: Show only statistics, don't extract notes
+
+### Filtering Modes
+
+**Forward Filtering** (`--from-date`): Extracts notes modified **from** a specific date **onwards** (towards present/future)
+- Example: `--from-date 2025-04-01` gets notes from April 1st to today
+
+**Reverse Filtering** (`--to-date`): Extracts notes modified **before** a specific date (going backwards into the past)  
+- Example: `--to-date 2025-04-30` gets notes before April 30th
+
+**Range Filtering**: Use both parameters to extract notes within a specific date range
+- Example: `--from-date 2025-04-01 --to-date 2025-04-30` gets notes from April 2025 only
 
 ### Examples
 
@@ -118,29 +144,55 @@ python3 note_reader.py -h
 # Extract last 3 notes
 python3 note_reader.py -n 3
 
+# FORWARD FILTERING EXAMPLES
 # Extract notes modified in the last 2 weeks
 python3 note_reader.py -d 14 -n 50
 
 # Extract notes from specific date with statistics
 python3 note_reader.py -d 2025-05-15 -n 10 -c
 
-# Check how many notes you have
+# REVERSE FILTERING EXAMPLES (NEW!)
+# Extract 5 notes from before 30 days ago
+python3 note_reader.py -t 30 -n 5
+
+# Extract notes before a specific date
+python3 note_reader.py -t 2025-04-01 -n 20
+
+# Get statistics for reverse filtering
+python3 note_reader.py -t 30 --stats-only
+
+# RANGE FILTERING EXAMPLES
+# Extract notes from April 2025 only
+python3 note_reader.py -d 2025-04-01 -t 2025-04-30 -n 100
+
+# Extract notes from last month with count
+python3 note_reader.py -d 30 -t 0 -n 50 -c
+
+# Check how many notes you have total
 python3 note_reader.py --stats-only
 ```
 
 ### Run Examples
 
-To see various usage examples:
+To see various usage examples including the new reverse filtering:
 
 ```bash
+# Run original examples
 python3 examples.py
+
+# Run updated examples with reverse filtering demonstrations
+python3 examples_updated.py
 ```
 
 ## Output
 
 The script generates:
 - Console output with note titles, creation/modification dates, and content previews
-- JSON export file (`notes_export_last_X.json`) with full note data
+- JSON export files with descriptive names based on filtering criteria:
+  - `notes_export_last_X.json` (basic extraction)
+  - `notes_export_from_YYYYMMDD_limit_X.json` (forward filtering)
+  - `notes_export_before_YYYYMMDD_limit_X.json` (reverse filtering) 
+  - `notes_export_YYYYMMDD_to_YYYYMMDD_limit_X.json` (range filtering)
 
 ## Privacy Note
 
@@ -151,10 +203,12 @@ The script generates:
 ## Error Handling
 
 The script includes:
-- 30-second timeout protection
+- 60-second timeout protection for complex filtering operations
 - Permission error handling
 - AppleScript execution error handling
 - Graceful failure when Notes app is inaccessible
+- Processing limits (500 notes max per operation) to prevent hanging with large note collections
+- Italian macOS system compatibility for date parsing
 
 ## License
 
