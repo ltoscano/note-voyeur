@@ -37,7 +37,7 @@ ENV/
 *.temp
 
 # Development and testing files
-examples_*.py
+examples*.py
 setup_env.sh
 test_env*.py
 final_integration*.py
