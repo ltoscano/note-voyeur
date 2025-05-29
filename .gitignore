@@ -42,3 +42,6 @@ example_*.py
 setup_env.sh
 test_env*.py
 final_integration*.py
+
+# Synthetic deployment scripts
+to_synth*.sh
