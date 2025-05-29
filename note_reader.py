@@ -239,16 +239,40 @@ def read_notes_with_filters(limit=5, from_date=None, to_date=None, filter_tag=No
                         }
                         notes.append(note)
             
+            # Apply marker and tag filtering logic
+            marker = "NOTE-VOYEUR: TARGET ACQUIRED!"
+            
             # Apply tag filter if specified
             if filter_tag:
                 filtered_notes = []
-                filter_tag_lower = filter_tag.lower()
                 for note in notes:
-                    # Check if filter_tag is in title or body (case-insensitive)
-                    title_lower = note["title"].lower()
-                    body_lower = note["body"].lower()
-                    if filter_tag_lower in title_lower or filter_tag_lower in body_lower:
+                    title_content = note["title"]
+                    body_content = note["body"]
+                    
+                    # Rule 1: If note contains marker, IGNORE it always
+                    if marker in title_content or marker in body_content:
+                        continue
+                    
+                    # Rule 2: If note does NOT contain marker and filter-tag is specified
+                    # Check if filter-tag exists in title or body
+                    if filter_tag in title_content or filter_tag in body_content:
                         filtered_notes.append(note)
+                
+                notes = filtered_notes
+            else:
+                # No filter-tag specified, but still need to exclude notes with marker
+                filtered_notes = []
+                for note in notes:
+                    title_content = note["title"]
+                    body_content = note["body"]
+                    
+                    # Rule 1: If note contains marker, IGNORE it always
+                    if marker in title_content or marker in body_content:
+                        continue
+                    
+                    # Rule 2: If note does NOT contain marker, use it
+                    filtered_notes.append(note)
+                
                 notes = filtered_notes
             
             return notes
@@ -303,7 +327,21 @@ def read_notes_structured(limit=10):
                         }
                         notes.append(note)
             
-            return notes
+            # Apply marker filtering logic (exclude notes with marker)
+            marker = "NOTE-VOYEUR: TARGET ACQUIRED!"
+            filtered_notes = []
+            for note in notes:
+                title_content = note["title"]
+                body_content = note["body"]
+                
+                # If note contains marker, IGNORE it
+                if marker in title_content or marker in body_content:
+                    continue
+                
+                # If note does NOT contain marker, use it
+                filtered_notes.append(note)
+            
+            return filtered_notes
         else:
             print(f"Error executing AppleScript: {result.stderr}")
             return []
@@ -654,6 +692,42 @@ def mark_notes_with_voyeur_tag(notes):
     return marked_count
 
 
+def clean_voyeur_marks_from_notes(notes, filter_tag=None):
+    """
+    Remove 'NOTE-VOYEUR: TARGET ACQUIRED!' marks and filter tags from note titles and bodies
+    This function cleans the extracted data for display and export, using simple string replacement
+    
+    Args:
+        notes: List of note dictionaries with 'title' and 'body' keys
+        filter_tag: Tag string to also remove from titles and bodies
+        
+    Returns:
+        List of cleaned note dictionaries
+    """
+    marker = "NOTE-VOYEUR: TARGET ACQUIRED!"
+    cleaned_notes = []
+    
+    for note in notes:
+        cleaned_note = note.copy()
+        
+        # Clean the title - remove marker and filter tag using replace()
+        cleaned_note["title"] = cleaned_note["title"].replace(marker, "").strip()
+        if filter_tag:
+            cleaned_note["title"] = cleaned_note["title"].replace(filter_tag, "").strip()
+        
+        # Clean the body - remove marker and filter tag using replace()
+        cleaned_note["body"] = cleaned_note["body"].replace(marker, "")
+        if filter_tag:
+            cleaned_note["body"] = cleaned_note["body"].replace(filter_tag, "")
+        
+        # Clean up extra whitespace
+        cleaned_note["body"] = cleaned_note["body"].strip()
+        
+        cleaned_notes.append(cleaned_note)
+    
+    return cleaned_notes
+
+
 def main():
     """
     Main function with command line argument support
@@ -673,6 +747,8 @@ def main():
                        help='Count total notes and notes matching criteria')
     parser.add_argument('--stats-only', action='store_true',
                        help='Show only statistics, do not extract notes')
+    parser.add_argument('-o', '--output', type=str, default=None,
+                       help='Force output filename (e.g., my_notes.json). If not specified, auto-generates descriptive filename.')
     
     args = parser.parse_args()
     
@@ -743,30 +819,40 @@ def main():
     
     # Display results
     if notes:
-        display_notes(notes)
+        # Clean voyeur marks and filter tags from extracted notes (for display and export only)
+        cleaned_notes = clean_voyeur_marks_from_notes(notes, filter_tag)
         
-        # Mark notes if requested
+        display_notes(cleaned_notes)
+        
+        # Save to file with descriptive name or forced output name
+        if args.output:
+            filename = args.output
+            # Ensure .json extension if not provided
+            if not filename.endswith('.json'):
+                filename += '.json'
+        else:
+            # Auto-generate descriptive filename
+            tag_suffix = f"_tag_{filter_tag.replace(' ', '_')}" if filter_tag else ""
+            mark_suffix = "_marked" if args.mark else ""
+            
+            if from_date and to_date:
+                filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
+            elif from_date:
+                filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
+            elif to_date:
+                filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
+            else:
+                filename = f"notes_export_last{tag_suffix}{mark_suffix}_{args.limit}.json"
+        
+        save_notes_to_file(cleaned_notes, filename)
+        
+        # Mark notes AFTER extraction and saving (using original note data to preserve filter-tags)
         if args.mark:
             marked_count = mark_notes_with_voyeur_tag(notes)
             if marked_count > 0:
                 print(f"\n✅ Successfully marked {marked_count} notes with VOYEUR tag!")
             else:
                 print(f"\n⚠️  No notes were marked.")
-        
-        # Save to file with descriptive name
-        tag_suffix = f"_tag_{filter_tag.replace(' ', '_')}" if filter_tag else ""
-        mark_suffix = "_marked" if args.mark else ""
-        
-        if from_date and to_date:
-            filename = f"notes_export_{from_date.strftime('%Y%m%d')}_to_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
-        elif from_date:
-            filename = f"notes_export_from_{from_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
-        elif to_date:
-            filename = f"notes_export_before_{to_date.strftime('%Y%m%d')}{tag_suffix}{mark_suffix}_limit_{args.limit}.json"
-        else:
-            filename = f"notes_export_last{tag_suffix}{mark_suffix}_{args.limit}.json"
-        
-        save_notes_to_file(notes, filename)
     else:
         print("No notes found matching the criteria.")
     
