@@ -334,13 +334,6 @@ The AI analysis script (`ai_analyzer.py`) generates:
 ### Core Scripts
 - **`note_reader.py`** - Main script for extracting notes from macOS Notes app
 - **`ai_analyzer.py`** ✨ NEW! - AI-powered analysis of extracted notes using OpenAI GPT-4
-- **`examples_ai_analyzer.py`** - Example usage and demonstrations for AI analyzer
-
-### Example Scripts
-- **`examples.py`** - Basic usage examples for note_reader.py
-- **`examples_with_tags.py`** - Examples using tag filtering functionality
-- **`examples_with_marking.py`** - Examples using note marking functionality
-- **`examples_updated.py`** - Updated examples with latest features
 
 ### Documentation
 - **`README.md`** - This documentation file
@@ -486,29 +479,6 @@ The AI analyzer adds an `ai_analysis` field to each note with the following stru
   ]
 }
 ```
-
-## Utility Scripts
-
-### Deployment Script
-The `to-synthetic.sh` script automates deployment of extracted resources:
-
-```bash
-# Deploy resources.json to external repository
-./to-synthetic.sh
-```
-
-This script:
-- Copies `resources.json` to `../ltoscano.github.io/data/resources/`
-- Creates destination directory if needed
-- Provides deployment confirmation
-
-### Example Scripts
-- **`examples.py`** - Basic usage demonstrations
-- **`examples_updated.py`** - Latest features with reverse filtering
-- **`examples_with_tags.py`** - Tag filtering examples
-- **`examples_with_marking.py`** - Note marking demonstrations
-- **`examples_ai_analyzer.py`** - AI analysis examples
-- **`final_integration_test.py`** - Comprehensive integration testing
 
 ## Privacy & Security
 
